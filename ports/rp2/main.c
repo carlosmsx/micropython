@@ -40,6 +40,7 @@
 #include "shared/runtime/softtimer.h"
 #include "shared/tinyusb/mp_usbd.h"
 #include "uart.h"
+#include "msx_hw.h"
 #include "modmachine.h"
 #include "modrp2.h"
 #include "mpbthciport.h"
@@ -90,7 +91,7 @@ int main(int argc, char **argv) {
     // Set the MCU frequency and as a side effect the peripheral clock to 48 MHz.
     set_sys_clock_khz(SYS_CLK_KHZ, false);
 
-    // Hook for setting up anything that needs to be super early in the boot-up process.
+    // Hook for setting up anything that needs to be super early in the bootup process.
     MICROPY_BOARD_STARTUP();
 
     #if MICROPY_HW_ENABLE_UART_REPL
@@ -151,6 +152,9 @@ int main(int argc, char **argv) {
         cyw43_wifi_ap_set_ssid(&cyw43_state, 8, buf);
         cyw43_wifi_ap_set_auth(&cyw43_state, CYW43_AUTH_WPA2_AES_PSK);
         cyw43_wifi_ap_set_password(&cyw43_state, 8, (const uint8_t *)"picoW123");
+
+        //cyw43_arch_init();
+        //cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);  // Apaga el LED al iniciar
     }
     #endif
 
@@ -160,6 +164,7 @@ int main(int argc, char **argv) {
     for (;;) {
 
         // Initialise MicroPython runtime.
+        tms9918_init();
         mp_init();
         mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_lib));
 

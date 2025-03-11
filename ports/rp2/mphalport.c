@@ -22,7 +22,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- */
+*/
 
 #include "py/runtime.h"
 #include "py/stream.h"
@@ -36,6 +36,7 @@
 #include "pendsv.h"
 #include "tusb.h"
 #include "uart.h"
+#include "msx_hw.h"
 #include "hardware/irq.h"
 #include "pico/unique_id.h"
 #include "pico/aon_timer.h"
@@ -77,9 +78,23 @@ uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
     return ret;
 }
 
+int msx_getkey(void);
+static uint32_t last_scan_time = 0;
+
 // Receive single character
 int mp_hal_stdin_rx_chr(void) {
     for (;;) {
+        // Tomar el tiempo actual
+        uint32_t current_time = mp_hal_ticks_ms();
+
+        // Esperar al menos 20ms antes de leer de nuevo el teclado MSX
+        if ((current_time - last_scan_time) >= 20) { //50Hz
+            last_scan_time = current_time;  // Actualizar el tiempo de la última lectura
+            int last_key = msx_getkey();  // Leer del teclado MSX
+            if (last_key != -1)
+                return last_key;
+        }
+
         #if MICROPY_HW_USB_CDC
         mp_usbd_cdc_poll_interfaces(0);
         #endif
@@ -102,6 +117,11 @@ int mp_hal_stdin_rx_chr(void) {
 mp_uint_t mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
     mp_uint_t ret = len;
     bool did_write = false;
+
+    for (mp_uint_t i = 0; i < len; i++) {
+        tms9918_putchar(str[i]);  // Envía cada carácter a la pantalla del TMS9918
+    }
+
     #if MICROPY_HW_ENABLE_UART_REPL
     mp_uart_write_strn(str, len);
     did_write = true;
@@ -124,6 +144,15 @@ mp_uint_t mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
     #endif
     return did_write ? ret : 0;
 }
+
+/*
+mp_uint_t mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
+    for (mp_uint_t i = 0; i < len; i++) {
+        tms9918_putchar(str[i]);  // Envía cada carácter a la pantalla del TMS9918
+    }
+    return true;
+}
+*/
 
 #if PICO_RISCV
 __attribute__((naked)) mp_uint_t mp_hal_ticks_cpu(void) {

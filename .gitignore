@@ -24,3 +24,7 @@ user.props
 
 # MacOS desktop metadata files
 .DS_Store
+
+# rpi pico sdk
+lib/pico-sdk/
+ports/rp2/f.sh
