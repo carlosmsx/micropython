@@ -27,4 +27,5 @@ user.props
 
 # rpi pico sdk
 lib/pico-sdk/
+lib/pico-sdk
 ports/rp2/f.sh
